@@ -1,10 +1,11 @@
 {
-  "id": "[plugin].com.pot-app.ChatGLM 3/4",
+  "id": "[plugin].com.pot-app.ChatGLM4",
   "plugin_type": "translate",
   "icon": "lingva.svg",
   "display": "ChatGLM",
   "homepage": "https://github.com/doubinanberwan/pot-app-translate-plugin--ChatGLM-",
   "needs": [{ "key": "requestPath", "display": "请求地址" }],
+  "needs": [{ "key": "apikey", "display": "API key" }],
   "language": {
     "auto": "auto",
     "zh_cn": "zh",
