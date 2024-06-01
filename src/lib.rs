@@ -1,43 +1,40 @@
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::error::Error;
-use urlencoding::encode;
 
 #[no_mangle]
 pub fn translate(
     text: &str, // 待翻译文本
     from: &str, // 源语言
     to: &str,   // 目标语言
-    // (pot会根据info.json 中的 language 字段传入插件需要的语言代码，无需再次转换)
     detect: &str, // 检测到的语言 (若使用 detect, 需要手动转换)
     needs: HashMap<String, String>, // 插件需要的其他参数,由info.json定义
 ) -> Result<Value, Box<dyn Error>> {
+    let api_key = needs.get("apiKey").ok_or("sk-m58ayNrRswFSeFOgdQVjjz3TlsbxHsn6ogsYSehFtbNcTef6")?;
     let client = reqwest::blocking::ClientBuilder::new().build()?;
 
-    let mut url = match needs.get("requestPath") {
-        Some(url) => url.to_string(),
-        None => "lingva.pot-app.com".to_string(),
-    };
-    if url.is_empty() {
-        url = "lingva.pot-app.com".to_string();
-    }
-    if !url.starts_with("http") {
-        url = format!("https://{}", url);
-    }
+    let url = "https://api.moonshot.cn";
 
-    let plain_text = text.replace("/", "@@");
-    let encode_text = encode(plain_text.as_str());
+    let request_body = json!({
+        "prompt": format!("Translate the following text from {} to {}: {}", from, to, text),
+        "max_tokens": 60
+    });
 
     let res: Value = client
-        .get(format!("{url}/api/v1/{from}/{to}/{encode_text}"))
+        .post(url)
+        .header("Authorization", format!("Bearer {}", api_key))
+        .json(&request_body)
         .send()?
         .json()?;
 
     fn parse_result(res: Value) -> Option<String> {
-        let result = res.as_object()?.get("translation")?.as_str()?.to_string();
-
-        Some(result.replace("@@", "/"))
+        res.get("choices")?
+            .get(0)?
+            .get("text")?
+            .as_str()
+            .map(|s| s.trim().to_string())
     }
+
     if let Some(result) = parse_result(res) {
         return Ok(Value::String(result));
     } else {
@@ -51,8 +48,8 @@ mod tests {
     #[test]
     fn try_request() {
         let mut needs = HashMap::new();
-        needs.insert("requestPath".to_string(), "lingva.pot-app.com".to_string());
-        let result = translate("你好 世界！", "auto", "en", "zh_cn", needs).unwrap();
+        needs.insert("apiKey".to_string(), "your_openai_api_key".to_string());
+        let result = translate("你好 世界！", "zh", "en", "zh_cn", needs).unwrap();
         println!("{result}");
     }
 }
